@@ -49,6 +49,11 @@ function escapeHtml(text) {
     return String(text).replace(/[&<>"']/g, m => map[m]);
 }
 
+// Helper to safely convert to lowercase string
+function safeToLower(value) {
+    return value ? String(value).toLowerCase() : null;
+}
+
 // Set API key
 document.getElementById('setKeyBtn').addEventListener('click', () => {
     const key = document.getElementById('apiKey').value.trim();
@@ -102,12 +107,17 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
         };
 
         initialResults.entries.forEach(entry => {
-            if (entry.email) connections.emails.add(entry.email.toLowerCase());
-            if (entry.username) connections.usernames.add(entry.username.toLowerCase());
-            if (entry.name) connections.names.add(entry.name.toLowerCase());
+            const email = safeToLower(entry.email);
+            const username = safeToLower(entry.username);
+            const name = safeToLower(entry.name);
+            const address = safeToLower(entry.address);
+            
+            if (email) connections.emails.add(email);
+            if (username) connections.usernames.add(username);
+            if (name) connections.names.add(name);
             if (entry.phone) connections.phones.add(entry.phone);
             if (entry.ip_address) connections.ips.add(entry.ip_address);
-            if (entry.address) connections.addresses.add(entry.address.toLowerCase());
+            if (address) connections.addresses.add(address);
         });
 
         // Search related terms
@@ -128,13 +138,18 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
                 };
 
                 result.entries.forEach(entry => {
-                    if (entry.email && connections.emails.has(entry.email.toLowerCase())) {
+                    const email = safeToLower(entry.email);
+                    const username = safeToLower(entry.username);
+                    const name = safeToLower(entry.name);
+                    const address = safeToLower(entry.address);
+                    
+                    if (email && connections.emails.has(email)) {
                         connectionMap[term].connections.email.add(entry.email);
                     }
-                    if (entry.username && connections.usernames.has(entry.username.toLowerCase())) {
+                    if (username && connections.usernames.has(username)) {
                         connectionMap[term].connections.username.add(entry.username);
                     }
-                    if (entry.name && connections.names.has(entry.name.toLowerCase())) {
+                    if (name && connections.names.has(name)) {
                         connectionMap[term].connections.name.add(entry.name);
                     }
                     if (entry.phone && connections.phones.has(entry.phone)) {
@@ -143,7 +158,7 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
                     if (entry.ip_address && connections.ips.has(entry.ip_address)) {
                         connectionMap[term].connections.ip.add(entry.ip_address);
                     }
-                    if (entry.address && connections.addresses.has(entry.address.toLowerCase())) {
+                    if (address && connections.addresses.has(address)) {
                         connectionMap[term].connections.address.add(entry.address);
                     }
                 });
@@ -197,6 +212,14 @@ function displayResults(query, initialResults, connectionMap, discoveredConnecti
     if (discoveredConnections.ips.size > 0) {
         html += `<div style="margin-bottom: 8px;"><span style="color: var(--text-secondary);">IPs:</span> `;
         html += Array.from(discoveredConnections.ips).map(ip => `<span class="connection-badge">${escapeHtml(ip)}</span>`).join('');
+        html += `</div>`;
+    }
+    if (discoveredConnections.addresses.size > 0) {
+        html += `<div style="margin-bottom: 8px;"><span style="color: var(--text-secondary);">Addresses:</span> `;
+        html += Array.from(discoveredConnections.addresses).slice(0, 3).map(a => `<span class="connection-badge">${escapeHtml(a)}</span>`).join('');
+        if (discoveredConnections.addresses.size > 3) {
+            html += `<span style="color: var(--text-secondary); font-size: 12px;"> +${discoveredConnections.addresses.size - 3} more</span>`;
+        }
         html += `</div>`;
     }
     
