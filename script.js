@@ -17,6 +17,7 @@ interactiveElements.forEach(el => {
 
 // State
 let apiKey = null;
+let lastSearchResults = null;
 
 // API functions
 async function dehashedSearch(query, page = 1, size = 100, wildcard = true, regex = false, deDupe = true) {
@@ -52,6 +53,91 @@ function escapeHtml(text) {
 // Helper to safely convert to lowercase string
 function safeToLower(value) {
     return value ? String(value).toLowerCase() : null;
+}
+
+// Helper to check if a term appears in a password
+function passwordContains(password, term) {
+    if (!password || !term) return false;
+    const pwLower = String(password).toLowerCase();
+    const termLower = String(term).toLowerCase();
+    return pwLower.includes(termLower);
+}
+
+// Export functions
+function exportToJSON() {
+    if (!lastSearchResults) return;
+    
+    const dataStr = JSON.stringify(lastSearchResults, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `dehashed_results_${Date.now()}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+}
+
+function exportToCSV() {
+    if (!lastSearchResults) return;
+    
+    const allEntries = [];
+    
+    // Add initial results
+    lastSearchResults.initialResults.entries.forEach(entry => {
+        allEntries.push({
+            source: 'Initial Search',
+            email: entry.email || '',
+            username: entry.username || '',
+            name: entry.name || '',
+            phone: entry.phone || '',
+            address: entry.address || '',
+            ip_address: entry.ip_address || '',
+            password: entry.password || '',
+            hashed_password: entry.hashed_password || '',
+            database_name: entry.database_name || ''
+        });
+    });
+    
+    // Add related results
+    for (const [term, data] of Object.entries(lastSearchResults.connectionMap)) {
+        data.entries.forEach(entry => {
+            allEntries.push({
+                source: `Related: ${term}`,
+                email: entry.email || '',
+                username: entry.username || '',
+                name: entry.name || '',
+                phone: entry.phone || '',
+                address: entry.address || '',
+                ip_address: entry.ip_address || '',
+                password: entry.password || '',
+                hashed_password: entry.hashed_password || '',
+                database_name: entry.database_name || ''
+            });
+        });
+    }
+    
+    if (allEntries.length === 0) return;
+    
+    // Create CSV
+    const headers = Object.keys(allEntries[0]);
+    const csvRows = [headers.join(',')];
+    
+    allEntries.forEach(entry => {
+        const values = headers.map(header => {
+            const val = String(entry[header] || '');
+            return `"${val.replace(/"/g, '""')}"`;
+        });
+        csvRows.push(values.join(','));
+    });
+    
+    const csvStr = csvRows.join('\n');
+    const dataBlob = new Blob([csvStr], { type: 'text/csv' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `dehashed_results_${Date.now()}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
 }
 
 // Set API key
@@ -133,7 +219,8 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
                         name: new Set(),
                         phone: new Set(),
                         ip: new Set(),
-                        address: new Set()
+                        address: new Set(),
+                        password: new Set()
                     }
                 };
 
@@ -161,9 +248,24 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
                     if (address && connections.addresses.has(address)) {
                         connectionMap[term].connections.address.add(entry.address);
                     }
+                    
+                    // CHECK PASSWORD CONTENTS
+                    initialResults.entries.forEach(initEntry => {
+                        if (passwordContains(initEntry.password, term)) {
+                            connectionMap[term].connections.password.add(initEntry.password);
+                        }
+                    });
                 });
             }
         }
+
+        // Store results for export
+        lastSearchResults = {
+            initialQuery,
+            initialResults,
+            connectionMap,
+            connections
+        };
 
         // Display results
         displayResults(initialQuery, initialResults, connectionMap, connections);
@@ -179,6 +281,12 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
 function displayResults(query, initialResults, connectionMap, discoveredConnections) {
     const resultsContent = document.getElementById('resultsContent');
     let html = '';
+
+    // Export buttons
+    html += `<div style="display: flex; gap: 12px; margin-bottom: 24px;">`;
+    html += `<button class="btn" onclick="exportToJSON()" style="padding: 12px 24px; font-size: 14px;">Export JSON</button>`;
+    html += `<button class="btn" onclick="exportToCSV()" style="padding: 12px 24px; font-size: 14px;">Export CSV</button>`;
+    html += `</div>`;
 
     // Initial results
     html += `<div class="result-section">`;
@@ -313,7 +421,7 @@ function displayResults(query, initialResults, connectionMap, discoveredConnecti
     if (!hasConnections) {
         html += `<div style="background: rgba(220, 20, 60, 0.05); border: 1px solid var(--border); border-radius: 12px; padding: 20px;">`;
         html += `<p style="color: var(--text-secondary); margin-bottom: 12px;">No connections found between initial query and related terms.</p>`;
-        html += `<p style="color: var(--text-secondary); font-size: 14px;">This means the related terms you searched don't share any emails, usernames, names, phones, or IPs with your initial search.</p>`;
+        html += `<p style="color: var(--text-secondary); font-size: 14px;">This means the related terms you searched don't share any emails, usernames, names, phones, IPs, or password content with your initial search.</p>`;
         html += `</div>`;
     }
 
