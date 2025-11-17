@@ -97,22 +97,24 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
             usernames: new Set(),
             names: new Set(),
             phones: new Set(),
-            ips: new Set()
+            ips: new Set(),
+            addresses: new Set()
         };
 
         initialResults.entries.forEach(entry => {
-            if (entry.email) connections.emails.add(entry.email);
-            if (entry.username) connections.usernames.add(entry.username);
-            if (entry.name) connections.names.add(entry.name);
+            if (entry.email) connections.emails.add(entry.email.toLowerCase());
+            if (entry.username) connections.usernames.add(entry.username.toLowerCase());
+            if (entry.name) connections.names.add(entry.name.toLowerCase());
             if (entry.phone) connections.phones.add(entry.phone);
             if (entry.ip_address) connections.ips.add(entry.ip_address);
+            if (entry.address) connections.addresses.add(entry.address.toLowerCase());
         });
 
         // Search related terms
         const connectionMap = {};
         for (const term of relatedTerms) {
             const result = await dehashedSearch(term);
-            if (result.entries) {
+            if (result.entries && result.entries.length > 0) {
                 connectionMap[term] = {
                     entries: result.entries,
                     connections: {
@@ -120,18 +122,19 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
                         username: new Set(),
                         name: new Set(),
                         phone: new Set(),
-                        ip: new Set()
+                        ip: new Set(),
+                        address: new Set()
                     }
                 };
 
                 result.entries.forEach(entry => {
-                    if (entry.email && connections.emails.has(entry.email)) {
+                    if (entry.email && connections.emails.has(entry.email.toLowerCase())) {
                         connectionMap[term].connections.email.add(entry.email);
                     }
-                    if (entry.username && connections.usernames.has(entry.username)) {
+                    if (entry.username && connections.usernames.has(entry.username.toLowerCase())) {
                         connectionMap[term].connections.username.add(entry.username);
                     }
-                    if (entry.name && connections.names.has(entry.name)) {
+                    if (entry.name && connections.names.has(entry.name.toLowerCase())) {
                         connectionMap[term].connections.name.add(entry.name);
                     }
                     if (entry.phone && connections.phones.has(entry.phone)) {
@@ -140,12 +143,15 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
                     if (entry.ip_address && connections.ips.has(entry.ip_address)) {
                         connectionMap[term].connections.ip.add(entry.ip_address);
                     }
+                    if (entry.address && connections.addresses.has(entry.address.toLowerCase())) {
+                        connectionMap[term].connections.address.add(entry.address);
+                    }
                 });
             }
         }
 
         // Display results
-        displayResults(initialQuery, initialResults, connectionMap);
+        displayResults(initialQuery, initialResults, connectionMap, connections);
 
     } catch (error) {
         resultsContent.innerHTML = `<div class="error">ERROR: ${escapeHtml(error.message)}</div>`;
@@ -155,7 +161,7 @@ document.getElementById('searchBtn').addEventListener('click', async () => {
     btn.textContent = 'Find Connections';
 });
 
-function displayResults(query, initialResults, connectionMap) {
+function displayResults(query, initialResults, connectionMap, discoveredConnections) {
     const resultsContent = document.getElementById('resultsContent');
     let html = '';
 
@@ -163,6 +169,43 @@ function displayResults(query, initialResults, connectionMap) {
     html += `<div class="result-section">`;
     html += `<div class="result-header">Initial Search: ${escapeHtml(query)}</div>`;
     html += `<p style="color: var(--text-secondary); margin-bottom: 20px;">Found ${initialResults.entries.length} entries</p>`;
+
+    // Show what identifiers were discovered
+    html += `<div style="background: rgba(220, 20, 60, 0.05); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 20px;">`;
+    html += `<div style="font-weight: 600; margin-bottom: 12px; color: var(--accent);">Discovered Identifiers:</div>`;
+    
+    if (discoveredConnections.emails.size > 0) {
+        html += `<div style="margin-bottom: 8px;"><span style="color: var(--text-secondary);">Emails:</span> `;
+        html += Array.from(discoveredConnections.emails).map(e => `<span class="connection-badge">${escapeHtml(e)}</span>`).join('');
+        html += `</div>`;
+    }
+    if (discoveredConnections.usernames.size > 0) {
+        html += `<div style="margin-bottom: 8px;"><span style="color: var(--text-secondary);">Usernames:</span> `;
+        html += Array.from(discoveredConnections.usernames).map(u => `<span class="connection-badge">${escapeHtml(u)}</span>`).join('');
+        html += `</div>`;
+    }
+    if (discoveredConnections.names.size > 0) {
+        html += `<div style="margin-bottom: 8px;"><span style="color: var(--text-secondary);">Names:</span> `;
+        html += Array.from(discoveredConnections.names).map(n => `<span class="connection-badge">${escapeHtml(n)}</span>`).join('');
+        html += `</div>`;
+    }
+    if (discoveredConnections.phones.size > 0) {
+        html += `<div style="margin-bottom: 8px;"><span style="color: var(--text-secondary);">Phones:</span> `;
+        html += Array.from(discoveredConnections.phones).map(p => `<span class="connection-badge">${escapeHtml(p)}</span>`).join('');
+        html += `</div>`;
+    }
+    if (discoveredConnections.ips.size > 0) {
+        html += `<div style="margin-bottom: 8px;"><span style="color: var(--text-secondary);">IPs:</span> `;
+        html += Array.from(discoveredConnections.ips).map(ip => `<span class="connection-badge">${escapeHtml(ip)}</span>`).join('');
+        html += `</div>`;
+    }
+    
+    if (discoveredConnections.emails.size === 0 && discoveredConnections.names.size === 0 && 
+        discoveredConnections.phones.size === 0 && discoveredConnections.ips.size === 0) {
+        html += `<p style="color: var(--text-secondary); font-size: 14px;">Only username found. Try searching for associated emails, names, or phone numbers.</p>`;
+    }
+    
+    html += `</div>`;
 
     initialResults.entries.slice(0, 10).forEach((entry, i) => {
         html += `<div class="entry-item">`;
@@ -172,6 +215,9 @@ function displayResults(query, initialResults, connectionMap) {
         if (entry.username) html += `<div class="entry-field"><span class="entry-label">Username:</span><span class="entry-value">${escapeHtml(entry.username)}</span></div>`;
         if (entry.name) html += `<div class="entry-field"><span class="entry-label">Name:</span><span class="entry-value">${escapeHtml(entry.name)}</span></div>`;
         if (entry.phone) html += `<div class="entry-field"><span class="entry-label">Phone:</span><span class="entry-value">${escapeHtml(entry.phone)}</span></div>`;
+        if (entry.address) html += `<div class="entry-field"><span class="entry-label">Address:</span><span class="entry-value">${escapeHtml(entry.address)}</span></div>`;
+        if (entry.vin) html += `<div class="entry-field"><span class="entry-label">VIN:</span><span class="entry-value">${escapeHtml(entry.vin)}</span></div>`;
+        if (entry.ip_address) html += `<div class="entry-field"><span class="entry-label">IP:</span><span class="entry-value">${escapeHtml(entry.ip_address)}</span></div>`;
         if (entry.password) html += `<div class="entry-field"><span class="entry-label">Password:</span><span class="entry-value">${escapeHtml(entry.password)}</span></div>`;
         if (entry.hashed_password) {
             const hashStr = String(entry.hashed_password);
@@ -201,7 +247,7 @@ function displayResults(query, initialResults, connectionMap) {
         if (hasAnyConnection) {
             hasConnections = true;
             html += `<div style="margin-bottom: 32px;">`;
-            html += `<h3 style="color: var(--accent); font-size: 18px; margin-bottom: 16px;">Connections for: ${escapeHtml(term)}</h3>`;
+            html += `<h3 style="color: var(--accent); font-size: 18px; margin-bottom: 16px;">✓ Connections found for: ${escapeHtml(term)}</h3>`;
 
             for (const [type, values] of Object.entries(conns)) {
                 if (values.size > 0) {
@@ -217,24 +263,35 @@ function displayResults(query, initialResults, connectionMap) {
             html += `<p style="color: var(--text-secondary); margin-top: 12px;">Total related entries: ${data.entries.length}</p>`;
 
             // Show sample entries
-            data.entries.slice(0, 3).forEach((entry, i) => {
+            data.entries.slice(0, 5).forEach((entry, i) => {
                 html += `<div class="entry-item" style="margin-top: 12px;">`;
                 html += `<div style="font-weight: 600; margin-bottom: 8px; color: var(--text-secondary);">Sample Entry ${i + 1}</div>`;
                 
                 if (entry.email) html += `<div class="entry-field"><span class="entry-label">Email:</span><span class="entry-value">${escapeHtml(entry.email)}</span></div>`;
                 if (entry.username) html += `<div class="entry-field"><span class="entry-label">Username:</span><span class="entry-value">${escapeHtml(entry.username)}</span></div>`;
                 if (entry.name) html += `<div class="entry-field"><span class="entry-label">Name:</span><span class="entry-value">${escapeHtml(entry.name)}</span></div>`;
+                if (entry.phone) html += `<div class="entry-field"><span class="entry-label">Phone:</span><span class="entry-value">${escapeHtml(entry.phone)}</span></div>`;
+                if (entry.password) html += `<div class="entry-field"><span class="entry-label">Password:</span><span class="entry-value">${escapeHtml(entry.password)}</span></div>`;
                 if (entry.database_name) html += `<div class="entry-field"><span class="entry-label">Database:</span><span class="entry-value">${escapeHtml(entry.database_name)}</span></div>`;
                 
                 html += `</div>`;
             });
 
             html += `</div>`;
+        } else {
+            // Show that we searched but found no connections
+            html += `<div style="margin-bottom: 24px;">`;
+            html += `<h3 style="color: var(--text-secondary); font-size: 18px; margin-bottom: 12px;">✗ No connections for: ${escapeHtml(term)}</h3>`;
+            html += `<p style="color: var(--text-secondary); font-size: 14px;">Found ${data.entries.length} entries, but none share identifiers with your initial search.</p>`;
+            html += `</div>`;
         }
     }
 
     if (!hasConnections) {
-        html += `<p style="color: var(--text-secondary);">No connections found between initial query and related terms.</p>`;
+        html += `<div style="background: rgba(220, 20, 60, 0.05); border: 1px solid var(--border); border-radius: 12px; padding: 20px;">`;
+        html += `<p style="color: var(--text-secondary); margin-bottom: 12px;">No connections found between initial query and related terms.</p>`;
+        html += `<p style="color: var(--text-secondary); font-size: 14px;">This means the related terms you searched don't share any emails, usernames, names, phones, or IPs with your initial search.</p>`;
+        html += `</div>`;
     }
 
     html += `</div>`;
