@@ -173,7 +173,11 @@ function displayResults(query, initialResults, connectionMap) {
         if (entry.name) html += `<div class="entry-field"><span class="entry-label">Name:</span><span class="entry-value">${escapeHtml(entry.name)}</span></div>`;
         if (entry.phone) html += `<div class="entry-field"><span class="entry-label">Phone:</span><span class="entry-value">${escapeHtml(entry.phone)}</span></div>`;
         if (entry.password) html += `<div class="entry-field"><span class="entry-label">Password:</span><span class="entry-value">${escapeHtml(entry.password)}</span></div>`;
-        if (entry.hashed_password) html += `<div class="entry-field"><span class="entry-label">Hash:</span><span class="entry-value">${escapeHtml(entry.hashed_password.substring(0, 50))}...</span></div>`;
+        if (entry.hashed_password) {
+            const hashStr = String(entry.hashed_password);
+            const displayHash = hashStr.length > 50 ? hashStr.substring(0, 50) + '...' : hashStr;
+            html += `<div class="entry-field"><span class="entry-label">Hash:</span><span class="entry-value">${escapeHtml(displayHash)}</span></div>`;
+        }
         if (entry.database_name) html += `<div class="entry-field"><span class="entry-label">Database:</span><span class="entry-value">${escapeHtml(entry.database_name)}</span></div>`;
         
         html += `</div>`;
