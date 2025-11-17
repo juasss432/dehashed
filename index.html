@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeHashed Connection Finder</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="cursor"></div>
+    <div class="cursor-glow"></div>
+    <div class="background-grid"></div>
+    
+    <nav class="navbar">
+        <div class="nav-content">
+            <div class="logo">
+                <span class="logo-icon">◆</span>
+                <span class="logo-text">DeHashed Connection Finder</span>
+            </div>
+        </div>
+    </nav>
+    
+    <main class="container">
+        <div class="hero-section">
+            <h1 class="title">
+                <span class="gradient-text">Connection Finder</span>
+            </h1>
+            <p class="subtitle">Discover connections across leaked databases</p>
+        </div>
+
+        <div id="apiKeySection" class="card">
+            <div class="card-content">
+                <h2 style="margin-bottom: 24px; font-size: 24px;">Enter API Key</h2>
+                <div class="form-group">
+                    <label class="form-label">DeHashed API Key</label>
+                    <input type="password" class="form-input" id="apiKey" placeholder="Your API key (not stored)">
+                </div>
+                <button class="btn" id="setKeyBtn">Continue</button>
+            </div>
+        </div>
+
+        <div id="searchSection" class="card hidden">
+            <div class="card-content">
+                <h2 style="margin-bottom: 24px; font-size: 24px;">Search Parameters</h2>
+                <div class="form-group">
+                    <label class="form-label">Initial Query</label>
+                    <input type="text" class="form-input" id="initialQuery" placeholder="username, email, phone, etc.">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Related Terms (comma-separated)</label>
+                    <input type="text" class="form-input" id="relatedTerms" placeholder="other usernames, emails, phones to check for connections">
+                </div>
+                <button class="btn" id="searchBtn">Find Connections</button>
+            </div>
+        </div>
+
+        <div id="resultsSection" class="results-container">
+            <div class="card">
+                <div class="card-content" id="resultsContent">
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <footer class="footer">
+        <p>Made with <span class="heart">♥</span> by Dealer</p>
+    </footer>
+    
+    <script src="script.js"></script>
+</body>
+</html>
